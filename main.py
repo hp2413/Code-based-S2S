@@ -51,7 +51,7 @@ class OpenLLMVTuberMain:
         self.config = configs
         self.verbose = self.config.get("VERBOSE", False)
         self.websocket = websocket
-        self.live2d = self.init_live2d()
+        # self.live2d = self.init_live2d()
         self._continue_exec_flag = threading.Event()
         self._continue_exec_flag.set()  # Set the flag to continue execution
 
@@ -81,17 +81,17 @@ class OpenLLMVTuberMain:
 
     # Initialization methods
 
-    def init_live2d(self) -> Live2dModel | None:
-        if not self.config.get("LIVE2D", False):
-            return None
-        try:
-            live2d_model_name = self.config.get("LIVE2D_MODEL")
-            live2d_controller = Live2dModel(live2d_model_name)
-        except Exception as e:
-            print(f"Error initializing Live2D: {e}")
-            print("Proceed without Live2D.")
-            return None
-        return live2d_controller
+    # def init_live2d(self) -> Live2dModel | None:
+    #     if not self.config.get("LIVE2D", False):
+    #         return None
+    #     try:
+    #         live2d_model_name = self.config.get("LIVE2D_MODEL")
+    #         live2d_controller = Live2dModel(live2d_model_name)
+    #     except Exception as e:
+    #         print(f"Error initializing Live2D: {e}")
+    #         print("Proceed without Live2D.")
+    #         return None
+    #     return live2d_controller
 
     def init_llm(self) -> LLMInterface:
         llm_provider = self.config.get("LLM_PROVIDER")
@@ -178,10 +178,10 @@ class OpenLLMVTuberMain:
         else:
             system_prompt = self.config.get("DEFAULT_PERSONA_PROMPT_IN_YAML")
 
-        if self.live2d is not None:
-            system_prompt += prompt_loader.load_util(
-                self.config.get("LIVE2D_Expression_Prompt")
-            ).replace("[<insert_emomap_keys>]", self.live2d.emo_str)
+        # if self.live2d is not None:
+        #     system_prompt += prompt_loader.load_util(
+        #         self.config.get("LIVE2D_Expression_Prompt")
+        #     ).replace("[<insert_emomap_keys>]", self.live2d.emo_str)
 
         if self.verbose:
             print("\n === System Prompt ===")
@@ -329,8 +329,8 @@ class OpenLLMVTuberMain:
         if not self.tts:
             return None
 
-        if self.live2d:
-            sentence = self.live2d.remove_emotion_keywords(sentence)
+        # if self.live2d:
+        #     sentence = self.live2d.remove_emotion_keywords(sentence)
 
         if sentence.strip() == "":
             return None
