@@ -24,7 +24,9 @@ ollama:
   # system prompt is at the very end of this file
   VERBOSE: False
 
-
+## RAG
+RAG_ON: True
+EMBED_MODEL: "llama3.1:latest"
 
 # MemGPT Configurations
 ## Please set up memGPT server according to the [official documentation](https://memgpt.readme.io/docs/index)
@@ -188,8 +190,8 @@ SAVE_CHAT_HISTORY: True
 CHAT_HISTORY_DIR: "./chat_history/"
 
 # [this feature is currently removed, so useless for now]Turn on RAG (Retrieval Augmented Generation) or not. 
-RAG_ON: False
-LLMASSIST_RAG_ON: False
+# RAG_ON: False
+# LLMASSIST_RAG_ON: False
 
 
 

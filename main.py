@@ -18,7 +18,12 @@ from tts.tts_interface import TTSInterface
 
 import yaml
 import random
-
+import ollama
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.document_loaders import DirectoryLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import Document 
 
 class OpenLLMVTuberMain:
     """
@@ -54,6 +59,14 @@ class OpenLLMVTuberMain:
         # self.live2d = self.init_live2d()
         self._continue_exec_flag = threading.Event()
         self._continue_exec_flag.set()  # Set the flag to continue execution
+        
+        # Init RAG and load the docs.
+        if self.config.get("RAG_ON", False):
+            print("RAG is enabled")
+            self.retriever = self.init_vectorstore()
+        else:
+            print("RAG is disabled.")
+            self.retriever = None
 
         # Init ASR if voice input is on.
         if self.config.get("VOICE_INPUT_ON", False):
@@ -93,11 +106,60 @@ class OpenLLMVTuberMain:
     #         return None
     #     return live2d_controller
 
+    # Initialization rag
+    def init_vectorstore(self) -> Chroma:
+        print("Innitiate the document loader..")
+        # Define the path to the folder where the documents are located
+        folder_path = "./data"
+
+        # Specify the models for embeddings
+        embedding_model = self.config.get("EMBED_MODEL")
+        
+        # Load all files from the specified folder
+        loader = DirectoryLoader(folder_path)
+        print("Loading vault content in vectordb...")
+
+        # Load documents from the directory
+        docs = loader.load()
+
+        # Initialize a text splitter to chunk the documents for better processing
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+
+        # Split the loaded documents into smaller chunks
+        splits = text_splitter.split_documents(docs)
+
+        # 2. Create Ollama embeddings and vector store
+        # Instantiate the embeddings model
+        embeddings = OllamaEmbeddings(model=embedding_model)
+
+        # Create a list to hold documents along with their embeddings
+        documents_with_embeddings = []
+        for doc in splits:
+            # Generate an embedding for the current document chunk
+            doc_embedding = embeddings.embed_query(doc.page_content)[0]  # Take the first embedding
+            # Create a Document object with the embedding stored in its metadata
+            documents_with_embeddings.append(
+                Document(page_content=doc.page_content, metadata={"embedding": doc_embedding})
+            )
+
+        print(f"Loaded {len(documents_with_embeddings)} documents")
+
+        # Add documents with embeddings to the Chroma vector store
+        vectorstore = Chroma.from_documents(documents=documents_with_embeddings, embedding=embeddings) 
+        return vectorstore.as_retriever()
+    
     def init_llm(self) -> LLMInterface:
         llm_provider = self.config.get("LLM_PROVIDER")
         llm_config = self.config.get(llm_provider, {})
-        system_prompt = self.get_system_prompt()
-
+        if self.config.get("RAG_ON", False):
+            # System message that guides the LLM's responses for RAG
+            system_prompt = (
+                "You are a helpful assistant that is an expert at extracting the most useful information "
+                "from a given text. Also bring in extra relevant information to the user query from outside the given context."
+            )
+        else:
+            system_prompt = self.get_system_prompt() #old
+    
         llm = LLMFactory.create_llm(
             llm_provider=llm_provider, SYSTEM_PROMPT=system_prompt, **llm_config
         )
@@ -189,8 +251,12 @@ class OpenLLMVTuberMain:
 
         return system_prompt
 
+    
+    def combine_docs(self, docs)-> str:
+        # Combine the content of retrieved documents into a single string
+        return "\n\n".join(doc.page_content for doc in docs)
+    
     # Main conversation methods
-
     def conversation_chain(self, user_input: str | np.ndarray | None = None) -> str:
         """
         One iteration of the main conversation.
@@ -240,7 +306,36 @@ class OpenLLMVTuberMain:
 
         print(f"User input: {user_input}")
 
-        chat_completion: Iterator[str] = self.llm.chat_iter(user_input)
+        #user_input = "What is the name of the company where I worked as an iOS developer?"
+        #user_input = "What is Task Decomposition?"
+
+        if self.config.get("RAG_ON", False):
+            # Retrieve relevant documents based on the user's question
+            retrieved_docs = self.retriever.invoke(user_input)
+            # Combine the contents of the retrieved documents for context
+            formatted_context = self.combine_docs(retrieved_docs)
+            # Call the LLM with the question and formatted context
+
+            print("Done vector storage lookup")
+            # add the context over here
+            formatted_prompt = (
+                    "Context information is below:\n"
+                    "---------------------------------------------------------------\n"
+                    f"{formatted_context}\n"
+                    "---------------------------------------------------------------\n"
+                    "Given the context information above, answer the query strictly. "
+                    "If you cannot find a relevant answer based on the context, respond only with **'I don't know the answer!'** "
+                    "Do not provide any additional information or reasoning.\n"
+                    f"Query: {user_input}\n"
+                    "Answer: "
+            ).strip()
+        else:
+            formatted_prompt = user_input
+
+        print("Starting llm chat")
+                
+        # llm call
+        chat_completion: Iterator[str] = self.llm.chat_iter(formatted_prompt)
 
         if not self.config.get("TTS_ON", False):
             full_response = ""
