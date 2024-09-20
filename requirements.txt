@@ -1,3 +1,7 @@
+ffmpeg
+torch
+torchaudio
+
 requests
 websocket-client
 python-dotenv==1.0.0
@@ -16,3 +20,14 @@ openai
 fastapi
 uvicorn[standard]
 groq
+
+edge_tts
+langchain
+langchain_community
+chroma
+chromadb
+ollama
+bs4
+gpt4all
+unstructured
+unstructured[pdf]
