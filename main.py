@@ -6,7 +6,7 @@ import queue
 from typing import Callable, Iterator, Optional
 from fastapi import WebSocket
 import numpy as np
-
+import time
 from asr.asr_factory import ASRFactory
 from asr.asr_interface import ASRInterface
 from live2d_model import Live2dModel
@@ -304,6 +304,8 @@ class OpenLLMVTuberMain:
             print("Exiting...")
             exit()
 
+        # Start the timer
+        process_start_time = time.time()
         print(f"User input: {user_input}")
 
         #user_input = "What is the name of the company where I worked as an iOS developer?"
@@ -337,6 +339,14 @@ class OpenLLMVTuberMain:
         # llm call
         chat_completion: Iterator[str] = self.llm.chat_iter(formatted_prompt)
 
+        # End the llm timer
+        process_end_llm_time = time.time()
+
+        # Calculate the llm runtime
+        llm_runtime = process_end_llm_time - process_start_time
+
+        print(f" ---  --- llm runtime: {llm_runtime} seconds  ---  --- ")
+
         if not self.config.get("TTS_ON", False):
             full_response = ""
             for char in chat_completion:
@@ -349,6 +359,15 @@ class OpenLLMVTuberMain:
             return full_response
 
         full_response = self.speak(chat_completion)
+
+        # End the llm timer
+        process_end_tts_time = time.time()
+
+        # Calculate the tts runtime
+        tts_runtime = process_end_tts_time - process_start_time
+
+        print(f" ---  --- tts runtime: {tts_runtime} seconds  ---  --- ")
+
         if self.verbose:
             print(f"\nComplete response: [\n{full_response}\n]")
 
