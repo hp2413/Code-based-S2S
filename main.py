@@ -155,10 +155,7 @@ class OpenLLMVTuberMain:
         llm_config = self.config.get(llm_provider, {})
         if self.config.get("RAG_ON", False):
             # System message that guides the LLM's responses for RAG
-            system_prompt = (
-                "You are a helpful assistant that is an expert at extracting the most useful information "
-                "from a given text. Also bring in extra relevant information to the user query from outside the given context."
-            )
+            system_prompt = self.config.get("RAG_SYSTEM_PROMPT")
         else:
             system_prompt = self.get_system_prompt() #old
     
@@ -332,17 +329,15 @@ class OpenLLMVTuberMain:
 
             print("Done vector storage lookup")
             # add the context over here
-            formatted_prompt = (
-                    "Context information is below:\n"
-                    "---------------------------------------------------------------\n"
-                    f"{formatted_context}\n"
-                    "---------------------------------------------------------------\n"
-                    "Given the context information above, answer the query strictly. "
-                    "If you cannot find a relevant answer based on the context, respond only with **'I don't know the answer!'** "
-                    "Do not provide any additional information or reasoning.\n"
-                    f"Query: {user_input}\n"
-                    "Answer: "
-            ).strip()
+            formatted_prompt = ("Please answer the following question, using the provided context information below, strictly:\n"
+                                "---------------------------------------------------------------\n"
+                                f"{formatted_context}\n"
+                                "---------------------------------------------------------------\n"
+                                "If you cannot find a relevant answer based on the context, respond only with **'I don't know the answer!'** "
+                                "Do not provide any additional information or reasoning.\n"
+                                f"QUESTION: {user_input}\n"
+                                "Answer: "
+                                ).strip()
         else:
             formatted_prompt = user_input
 
