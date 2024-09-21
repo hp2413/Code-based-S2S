@@ -4,7 +4,7 @@
 
 from typing import Iterator
 from openai import OpenAI
-
+import ollama
 from .llm_interface import LLMInterface
 import json
 
@@ -102,11 +102,16 @@ class LLM(LLMInterface):
 
         chat_completion = []
         try:
-            chat_completion = self.client.chat.completions.create(
-                messages=self.memory,
-                model=self.model,
-                stream=True,
-            )
+            chat_completion = ollama.chat(model=self.model, messages=self.memory, stream=True)
+
+            # below is the older appraoch, which need the call go through the webserver, which might take some time for the response
+            # so the above is the base implimentation for the same but can get the response soon.
+
+            # chat_completion = self.client.chat.completions.create(
+            #     messages=self.memory,
+            #     model=self.model,
+            #     stream=True,
+            # )
         except Exception as e:
             print("Error calling the chat endpoint: " + str(e))
             self.__printDebugInfo()
@@ -117,10 +122,16 @@ class LLM(LLMInterface):
         def _generate_and_store_response():
             complete_response = ""
             for chunk in chat_completion:
-                if chunk.choices[0].delta.content is None:
-                    chunk.choices[0].delta.content = ""
-                yield chunk.choices[0].delta.content
-                complete_response += chunk.choices[0].delta.content
+                curr_chunk = chunk['message']['content']
+                if curr_chunk is None:
+                    curr_chunk = ""
+                yield curr_chunk
+                complete_response += curr_chunk
+            # for chunk in chat_completion:
+            #     if chunk.choices[0].delta.content is None:
+            #         chunk.choices[0].delta.content = ""
+            #     yield chunk.choices[0].delta.content
+            #     complete_response += chunk.choices[0].delta.content
                 
             self.memory.append(
                 {
