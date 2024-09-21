@@ -15,7 +15,7 @@ from llm.llm_interface import LLMInterface
 from prompts import prompt_loader
 from tts.tts_factory import TTSFactory
 from tts.tts_interface import TTSInterface
-import pygame
+
 import yaml
 import random
 import ollama
@@ -195,8 +195,6 @@ class OpenLLMVTuberMain:
                 "voice": api_keys.AZURE_VOICE,
             }
         tts = TTSFactory.get_tts_engine(tts_model, **tts_config)
-        # Initialize the pygame mixer
-        pygame.mixer.init()
         return tts
 
     def set_audio_output_func(
@@ -313,13 +311,14 @@ class OpenLLMVTuberMain:
 
         print(f"User input: {user_input}")
 
-        random_number = random.randint(1, 18)
-        self._play_audio_file(
-                    sentence=user_input,
-                    filepath=f"./Audio_Files/temp-{random_number}.mp3",
-                    remove_after_play = False
-                )
-        print(random_number)
+        # only express waiting sound when the rag is enabled
+        if  self.retriever is not None:
+            random_number = random.randint(1, 18)
+            self._play_audio_file(
+                        sentence=user_input,
+                        filepath=f"./Audio_Files/temp-{random_number}.mp3",
+                        remove_after_play = False
+                    )
         
         #user_input = "What is the name of the company where I worked as an iOS developer?"
         #user_input = "What is Task Decomposition?"
@@ -484,12 +483,8 @@ class OpenLLMVTuberMain:
             if self.verbose:
                 print(f">> Playing {filepath}...")
 
-            pygame.mixer.music.stop()  # Stop any currently playing sound
-            pygame.mixer.music.load(filepath)  
-            pygame.mixer.music.play() 
+            self.tts.play_audio_file_local(filepath) 
 
-            # old technique to play adio file
-            #self.tts.play_audio_file_local(filepath) 
             if remove_after_play:
                 self.tts.remove_file(filepath, verbose=self.verbose)
         except ValueError as e:
@@ -650,6 +645,7 @@ class OpenLLMVTuberMain:
 
     def _interrupt_post_processing(self) -> None:
         """Perform post-processing tasks (like resetting the continue flag to allow next conversation chain to start) after an interrupt."""
+        #TODO # Stop any currently playing sound
         self._continue_exec_flag.set()  # Reset the interrupt flag
 
     def _check_interrupt(self):

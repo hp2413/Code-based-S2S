@@ -31,4 +31,3 @@ bs4
 gpt4all
 unstructured
 unstructured[pdf]
-pygame
