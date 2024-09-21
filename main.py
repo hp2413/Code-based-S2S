@@ -15,7 +15,7 @@ from llm.llm_interface import LLMInterface
 from prompts import prompt_loader
 from tts.tts_factory import TTSFactory
 from tts.tts_interface import TTSInterface
-
+import pygame
 import yaml
 import random
 import ollama
@@ -195,7 +195,8 @@ class OpenLLMVTuberMain:
                 "voice": api_keys.AZURE_VOICE,
             }
         tts = TTSFactory.get_tts_engine(tts_model, **tts_config)
-
+        # Initialize the pygame mixer
+        pygame.mixer.init()
         return tts
 
     def set_audio_output_func(
@@ -312,7 +313,15 @@ class OpenLLMVTuberMain:
 
         print(f"User input: {user_input}")
 
-        user_input = "What is the name of the company where I worked as an iOS developer?"
+        random_number = random.randint(1, 18)
+        self._play_audio_file(
+                    sentence=user_input,
+                    filepath=f"./Audio_Files/temp-{random_number}.mp3",
+                    remove_after_play = False
+                )
+        print(random_number)
+        
+        #user_input = "What is the name of the company where I worked as an iOS developer?"
         #user_input = "What is Task Decomposition?"
 
         if self.config.get("RAG_ON", False):
@@ -455,7 +464,7 @@ class OpenLLMVTuberMain:
 
         return self.tts.generate_audio(sentence, file_name_no_ext=file_name_no_ext)
 
-    def _play_audio_file(self, sentence: str | None, filepath: str | None) -> None:
+    def _play_audio_file(self, sentence: str | None, filepath: str | None, remove_after_play: bool = True) -> None:
         """
         Play the audio file either locally or remotely using the Live2D controller if available.
 
@@ -474,9 +483,15 @@ class OpenLLMVTuberMain:
         try:
             if self.verbose:
                 print(f">> Playing {filepath}...")
-            self.tts.play_audio_file_local(filepath)
 
-            self.tts.remove_file(filepath, verbose=self.verbose)
+            pygame.mixer.music.stop()  # Stop any currently playing sound
+            pygame.mixer.music.load(filepath)  
+            pygame.mixer.music.play() 
+
+            # old technique to play adio file
+            #self.tts.play_audio_file_local(filepath) 
+            if remove_after_play:
+                self.tts.remove_file(filepath, verbose=self.verbose)
         except ValueError as e:
             if str(e) == "Audio is empty or all zero.":
                 print("No audio to be streamed. Response is empty.")
