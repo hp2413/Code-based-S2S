@@ -171,7 +171,7 @@ class OpenLLMVTuberMain:
         asr_model = self.config.get("ASR_MODEL")
         asr_config = self.config.get(asr_model, {})
         if asr_model == "AzureASR":
-            import api_keys
+            import api_keys # type: ignore
 
             asr_config = {
                 "callback": print,
@@ -187,7 +187,7 @@ class OpenLLMVTuberMain:
         tts_config = self.config.get(tts_model, {})
 
         if tts_model == "AzureTTS":
-            import api_keys
+            import api_keys # type: ignore
 
             tts_config = {
                 "api_key": api_keys.AZURE_API_Key,
@@ -504,6 +504,7 @@ class OpenLLMVTuberMain:
                         raise InterruptedError("Producer interrupted")
 
                     if char:
+                        # print the response on the screen
                         print(char, end="", flush=True)
                         sentence_buffer += char
                         full_response[0] += char
@@ -539,6 +540,12 @@ class OpenLLMVTuberMain:
                     audio_filepath = self._generate_audio_file(
                         sentence_buffer, file_name_no_ext=f"temp-{index}"
                     )
+                    # Calculate the tts first generation time
+                    if self.show_timing and not isFirst_Generated:
+                        process_first_audio_genration_time = time.time()
+                        tts_first_generation = process_first_audio_genration_time - self.process_start_time
+                        print(f"\n ---  --- First audio generation time: {tts_first_generation} seconds  at buffer check---  --- ")
+                        isFirst_Generated = True
                     audio_info = {
                         "sentence": sentence_buffer,
                         "audio_filepath": audio_filepath,
