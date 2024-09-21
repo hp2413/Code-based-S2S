@@ -23,7 +23,8 @@ ollama:
   MODEL: "llama3.1:latest"
   # system prompt is at the very end of this file
   VERBOSE: False
-
+  
+SHOW_RESPONSE_TIME: True
 ## RAG
 RAG_ON: True
 EMBED_MODEL: "llama3.1:latest"

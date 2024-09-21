@@ -55,11 +55,13 @@ class OpenLLMVTuberMain:
     ) -> None:
         self.config = configs
         self.verbose = self.config.get("VERBOSE", False)
+        self.show_timing = self.config.get("SHOW_RESPONSE_TIME", False)
         self.websocket = websocket
         # self.live2d = self.init_live2d()
         self._continue_exec_flag = threading.Event()
         self._continue_exec_flag.set()  # Set the flag to continue execution
         
+        print(f"is show response time enabled? {self.show_timing}")
         # Init RAG and load the docs.
         if self.config.get("RAG_ON", False):
             print("RAG is enabled")
@@ -305,10 +307,12 @@ class OpenLLMVTuberMain:
             exit()
 
         # Start the timer
-        process_start_time = time.time()
+        if self.show_timing:
+            self.process_start_time = time.time()
+
         print(f"User input: {user_input}")
 
-        #user_input = "What is the name of the company where I worked as an iOS developer?"
+        user_input = "What is the name of the company where I worked as an iOS developer?"
         #user_input = "What is Task Decomposition?"
 
         if self.config.get("RAG_ON", False):
@@ -343,9 +347,9 @@ class OpenLLMVTuberMain:
         process_end_llm_time = time.time()
 
         # Calculate the llm runtime
-        llm_runtime = process_end_llm_time - process_start_time
-
-        print(f" ---  --- llm runtime: {llm_runtime} seconds  ---  --- ")
+        if self.show_timing:
+            llm_runtime = process_end_llm_time - self.process_start_time
+            print(f"\n ---  --- llm runtime: {llm_runtime} seconds  ---  --- ")
 
         if not self.config.get("TTS_ON", False):
             full_response = ""
@@ -364,9 +368,9 @@ class OpenLLMVTuberMain:
         process_end_tts_time = time.time()
 
         # Calculate the tts runtime
-        tts_runtime = process_end_tts_time - process_start_time
-
-        print(f" ---  --- tts runtime: {tts_runtime} seconds  ---  --- ")
+        if self.show_timing:
+            tts_runtime = process_end_tts_time - self.process_start_time
+            print(f"\n ---  --- tts total runtime: {tts_runtime} seconds  ---  --- ")
 
         if self.verbose:
             print(f"\nComplete response: [\n{full_response}\n]")
@@ -494,7 +498,7 @@ class OpenLLMVTuberMain:
             try:
                 index = 0
                 sentence_buffer = ""
-
+                isFirst_Generated = False
                 for char in chat_completion:
                     if not self._continue_exec_flag.is_set():
                         raise InterruptedError("Producer interrupted")
@@ -511,6 +515,12 @@ class OpenLLMVTuberMain:
                             audio_filepath = self._generate_audio_file(
                                 sentence_buffer, file_name_no_ext=f"temp-{index}"
                             )
+                            # Calculate the tts first generation time
+                            if self.show_timing and not isFirst_Generated:
+                                process_first_audio_genration_time = time.time()
+                                tts_first_generation = process_first_audio_genration_time - self.process_start_time
+                                print(f"\n ---  --- First audio generation time: {tts_first_generation} seconds  ---  --- ")
+                                isFirst_Generated = True
                             if not self._continue_exec_flag.is_set():
                                 raise InterruptedError("Producer interrupted")
                             audio_info = {
@@ -550,7 +560,7 @@ class OpenLLMVTuberMain:
 
         def consumer_worker():
             heard_sentence = ""
-
+            isFirst_Played = False
             while True:
 
                 try:
@@ -563,6 +573,12 @@ class OpenLLMVTuberMain:
                     if audio_info is None:
                         break  # End of production
                     if audio_info:
+                        # Calculate the tts first play time
+                        if self.show_timing and not isFirst_Played:
+                            process_first_audio_play_time = time.time()
+                            tts_first_play = process_first_audio_play_time - self.process_start_time
+                            print(f"\n ---  --- First audio play time: {tts_first_play} seconds  ---  --- ")
+                            isFirst_Played = True
                         heard_sentence += audio_info["sentence"]
                         self._play_audio_file(
                             sentence=audio_info["sentence"],
