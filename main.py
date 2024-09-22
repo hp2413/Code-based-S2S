@@ -19,6 +19,7 @@ from tts.tts_interface import TTSInterface
 import yaml
 import random
 import ollama
+import asyncio
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import OllamaEmbeddings
 from langchain_community.document_loaders import DirectoryLoader
@@ -254,6 +255,12 @@ class OpenLLMVTuberMain:
         # Combine the content of retrieved documents into a single string
         return "\n\n".join(doc.page_content for doc in docs)
     
+    # TODO: Make this audio play async
+    # async def async_play_audio(self, sentence: str, filepath: str, remove_after_play: bool = False):
+    #     # Offload the blocking function to a separate thread
+    #     print(f"Playing async audio: {filepath}")
+    #     await asyncio.to_thread(self._play_audio_file, sentence, filepath, remove_after_play)
+    
     # Main conversation methods
     def conversation_chain(self, user_input: str | np.ndarray | None = None) -> str:
         """
@@ -302,10 +309,6 @@ class OpenLLMVTuberMain:
             print("Exiting...")
             exit()
 
-        # Start the timer
-        if self.show_timing:
-            self.process_start_time = time.time()
-
         print(f"User input: {user_input}")
 
         # only express waiting sound when the rag is enabled
@@ -316,9 +319,20 @@ class OpenLLMVTuberMain:
                         filepath=f"./Audio_Files/temp-{random_number}.mp3",
                         remove_after_play = False
                     )
+            #TODO: Make this audio play async
+            # print(f"\n -- asyncio start --")
+            # play_thread = threading.Thread(target=self._play_audio_file(sentence=user_input,filepath=f"./Audio_Files/temp-{random_number}.mp3", remove_after_play = False))
+            # play_thread.start()
+            # print(f"\n -- asyncio end --")
+
         
         #user_input = "What is the name of the company where I worked as an iOS developer?"
         #user_input = "What is Task Decomposition?"
+
+        # Start the timer
+        if self.show_timing:
+            self.process_start_time = time.time()
+            print(f"=== Started the vector storage lookup ===")
 
         if self.config.get("RAG_ON", False):
             # Retrieve relevant documents based on the user's question
@@ -342,7 +356,7 @@ class OpenLLMVTuberMain:
             formatted_prompt = user_input
 
         print("Starting llm chat")
-                
+
         # llm call
         chat_completion: Iterator[str] = self.llm.chat_iter(formatted_prompt)
 
