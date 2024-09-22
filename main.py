@@ -95,6 +95,12 @@ class OpenLLMVTuberMain:
 
         self.llm = self.init_llm()
 
+        self._play_audio_file(
+                        sentence="Welcome note",
+                        filepath=f"./Audio_Files/Welcome_audio.mp3",
+                        remove_after_play = False
+                    )
+        
     # Initialization methods
 
     # def init_live2d(self) -> Live2dModel | None:
@@ -156,7 +162,10 @@ class OpenLLMVTuberMain:
         llm_config = self.config.get(llm_provider, {})
         if self.config.get("RAG_ON", False):
             # System message that guides the LLM's responses for RAG
-            system_prompt = self.config.get("RAG_SYSTEM_PROMPT")
+            # system_prompt = self.config.get("RAG_SYSTEM_PROMPT")
+            system_prompt = prompt_loader.load_persona(
+                self.config.get("RAG_SYSTEM_PROMPT_FILE_NAME")
+            )
         else:
             system_prompt = self.get_system_prompt() #old
     
@@ -312,6 +321,8 @@ class OpenLLMVTuberMain:
         print(f"User input: {user_input}")
 
         # only express waiting sound when the rag is enabled
+        # Turning off now, untill this audio play async fix
+        '''
         if  self.retriever is not None:
             random_number = random.randint(1, 18)
             self._play_audio_file(
@@ -324,10 +335,12 @@ class OpenLLMVTuberMain:
             # play_thread = threading.Thread(target=self._play_audio_file(sentence=user_input,filepath=f"./Audio_Files/temp-{random_number}.mp3", remove_after_play = False))
             # play_thread.start()
             # print(f"\n -- asyncio end --")
+        '''
 
         
         #user_input = "What is the name of the company where I worked as an iOS developer?"
         #user_input = "What is Task Decomposition?"
+        #user_input = "Where is the restaurent located?"
 
         # Start the timer
         if self.show_timing:
@@ -694,10 +707,11 @@ class OpenLLMVTuberMain:
             "U.K.",
             "U.S.S.R.",
             "U.A.E.",
+            "NY."
         ]
 
         for item in white_list:
-            if text.strip().endswith(item):
+            if text.strip().lower().endswith(item.lower()):
                 return False
 
         punctuation_blacklist = [
